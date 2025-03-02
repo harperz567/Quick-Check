@@ -1,0 +1,19 @@
+Patient Name: 
+Patient DOB: 
+Record Time: 2025-03-02 03:13:17
+
+=== Patient Description ===
+I have a headache and it's very severe. I have it for three weeks.
+
+=== Symptom Analysis ===
+Symptoms:
+- severe headache
+- headache lasting for three weeks
+
+Possible Causes:
+- chronic migraine
+- tension-type headache
+- medication overuse headache
+- cervicogenic headache
+- sinus infection
+- brain tumor

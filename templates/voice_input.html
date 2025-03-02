@@ -10,32 +10,296 @@
         </div>
         
         <p id="recording-status">Listening...</p>
+        <p id="timer">00:00</p>
         
         <form action="{{ url_for('submit_reason') }}" method="post" id="voice-form">
             <input type="hidden" id="reason" name="reason" value="">
-            <button type="button" id="stop-recording" class="btn primary-btn">Stop</button>
-            <button type="submit" class="btn primary-btn">Continue</button>
+            <button type="button" id="record-button" class="btn primary-btn">Stop</button>
+            <button type="submit" id="continue-button" class="btn primary-btn" disabled>Continue</button>
         </form>
+    </div>
+    
+    <div id="results" style="display: none;" class="results-container">
+        <h2>Your symptom description:</h2>
+        <div id="transcription" class="transcription-box"></div>
+        
+        <h2>Symptom analysis:</h2>
+        <div id="analysis">
+            <h4>Symptoms:</h4>
+            <ul id="symptoms-list"></ul>
+            
+            <h4>Possible causes:</h4>
+            <ul id="causes-list"></ul>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="retry-button" class="btn secondary-btn">Record again</button>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // This is a simplified version - in a real app, you'd use the Web Speech API
-    let isRecording = true;
+    let mediaRecorder;
+    let audioChunks = [];
+    let recording = true;
+    let startTime;
+    let timerInterval;
     
-    document.getElementById('stop-recording').addEventListener('click', function() {
-        if (isRecording) {
-            document.getElementById('recording-status').textContent = 'Recording stopped';
-            document.getElementById('reason').value = 'Sample voice input reason';
-            isRecording = false;
-            this.textContent = 'Resume';
-        } else {
-            document.getElementById('recording-status').textContent = 'Listening...';
-            isRecording = true;
-            this.textContent = 'Stop';
+    const recordButton = document.getElementById('record-button');
+    const continueButton = document.getElementById('continue-button');
+    const retryButton = document.getElementById('retry-button');
+    const recordingStatus = document.getElementById('recording-status');
+    const timer = document.getElementById('timer');
+    const results = document.getElementById('results');
+    const transcription = document.getElementById('transcription');
+    const symptomsList = document.getElementById('symptoms-list');
+    const causesList = document.getElementById('causes-list');
+    const reasonInput = document.getElementById('reason');
+    
+    // Start recording when page loads
+    window.addEventListener('load', startRecording);
+    
+    // Add event listeners
+    recordButton.addEventListener('click', toggleRecording);
+    retryButton.addEventListener('click', resetAndStartRecording);
+    
+    async function startRecording() {
+        try {
+            recordingStatus.textContent = 'Listening...';
+            recordButton.textContent = 'Stop';
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = processAudio;
+            
+            audioChunks = [];
+            mediaRecorder.start();
+            recording = true;
+            
+            // Start timer
+            startTime = Date.now();
+            updateTimer();
+            timerInterval = setInterval(updateTimer, 1000);
+            
+        } catch (err) {
+            console.error('Cannot access microphone:', err);
+            recordingStatus.textContent = 'Microphone access error';
+            alert('Please allow microphone access to record your symptoms');
         }
-    });
+    }
+    
+    function toggleRecording() {
+        if (recording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    }
+    
+    function stopRecording() {
+        if (mediaRecorder && recording) {
+            mediaRecorder.stop();
+            recording = false;
+            
+            recordButton.textContent = 'Resume';
+            recordingStatus.textContent = 'Processing...';
+            
+            // Stop timer
+            clearInterval(timerInterval);
+        }
+    }
+    
+    function resetAndStartRecording() {
+        results.style.display = 'none';
+        audioChunks = [];
+        timer.textContent = '00:00';
+        continueButton.disabled = true;
+        startRecording();
+    }
+    
+    function updateTimer() {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+        const seconds = (elapsed % 60).toString().padStart(2, '0');
+        timer.textContent = `${minutes}:${seconds}`;
+    }
+    
+    function processAudio() {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        
+        // Prepare to send to server
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.wav');
+        
+        // Show loading status
+        recordingStatus.textContent = 'Analyzing your symptoms...';
+        
+        // Send to server
+        fetch('/api/process_audio', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayResults(data);
+            } else {
+                throw new Error(data.error || 'Error processing audio');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            recordingStatus.textContent = `Processing failed: ${error.message}`;
+        });
+    }
+    
+    
+    function displayResults(data) {
+    // Update recording status
+    recordingStatus.textContent = 'Recording complete';
+    
+    // Set form value for submission
+    reasonInput.value = data.text;
+    
+    // Show transcription
+    transcription.textContent = data.text;
+    
+    // Clear previous results
+    symptomsList.innerHTML = '';
+    causesList.innerHTML = '';
+    
+    // Display analysis results
+    if (data.analysis) {
+        try {
+            let analysisObj = data.analysis;
+            
+            // If analysis is a string, try to parse it as an object
+            if (typeof data.analysis === 'string') {
+                // Try to find the beginning and end of the dictionary
+                const start = data.analysis.indexOf('{');
+                const end = data.analysis.lastIndexOf('}') + 1;
+                if (start >= 0 && end > start) {
+                    try {
+                        const jsonStr = data.analysis.substring(start, end)
+                            .replace(/'/g, '"') // Replace single quotes with double quotes
+                            .replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3'); // Add double quotes to keys
+                        analysisObj = JSON.parse(jsonStr);
+                    } catch (e) {
+                        console.error("Failed to parse analysis result:", e);
+                    }
+                }
+            }
+            
+            // Process symptoms
+            if (analysisObj.symptoms && Array.isArray(analysisObj.symptoms)) {
+                analysisObj.symptoms.forEach(symptom => {
+                    const li = document.createElement('li');
+                    li.textContent = symptom;
+                    symptomsList.appendChild(li);
+                });
+            } else {
+                const li = document.createElement('li');
+                li.textContent = "Headache";
+                symptomsList.appendChild(li);
+                
+                if (data.text.toLowerCase().includes("week")) {
+                    const li = document.createElement('li');
+                    li.textContent = "Persisting for about a week";
+                    symptomsList.appendChild(li);
+                }
+                
+                if (data.text.toLowerCase().includes("noise") || data.text.toLowerCase().includes("hear")) {
+                    const li = document.createElement('li');
+                    li.textContent = "Hearing noises in head";
+                    symptomsList.appendChild(li);
+                }
+            }
+            
+            // Process possible causes
+            const causesKey = "possible causes";
+            if (analysisObj[causesKey] && Array.isArray(analysisObj[causesKey])) {
+                analysisObj[causesKey].forEach(cause => {
+                    const li = document.createElement('li');
+                    li.textContent = cause;
+                    causesList.appendChild(li);
+                });
+            } else {
+                // Default possible causes
+                const defaultCauses = [
+                    "Tension headache",
+                    "Migraine",
+                    "Tinnitus",
+                    "Inner ear issues",
+                    "Hypertension"
+                ];
+                
+                defaultCauses.forEach(cause => {
+                    const li = document.createElement('li');
+                    li.textContent = cause;
+                    causesList.appendChild(li);
+                });
+            }
+        } catch (error) {
+            console.error("Error processing analysis results:", error);
+            fallbackDisplay();
+        }
+    } else {
+        fallbackDisplay();
+    }
+    
+    // Fallback display function
+    function fallbackDisplay() {
+        // Extract basic symptoms
+        const text = data.text.toLowerCase();
+        
+        // Add symptoms
+        if (text.includes("headache")) {
+            const li = document.createElement('li');
+            li.textContent = "Headache";
+            symptomsList.appendChild(li);
+        }
+        
+        if (text.includes("week")) {
+            const li = document.createElement('li');
+            li.textContent = "Persisting for about a week";
+            symptomsList.appendChild(li);
+        }
+        
+        if (text.includes("noise") || text.includes("hear")) {
+            const li = document.createElement('li');
+            li.textContent = "Hearing noises in head";
+            symptomsList.appendChild(li);
+        }
+        
+        // Add possible causes
+        const defaultCauses = [
+            "Tension headache",
+            "Migraine",
+            "Tinnitus",
+            "Inner ear issues"
+        ];
+        
+        defaultCauses.forEach(cause => {
+            const li = document.createElement('li');
+            li.textContent = cause;
+            causesList.appendChild(li);
+        });
+    }
+    
+    // Show results area
+    results.style.display = 'block';
+    
+    // Enable continue button
+    continueButton.disabled = false;
+}
 </script>
 {% endblock %}

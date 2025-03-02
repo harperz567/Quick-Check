@@ -1,0 +1,16 @@
+Patient Name: 
+Record Time: 2025-03-02 03:07:52
+
+=== Patient Description ===
+I really have a headache now. Have it for a long time. Three weeks.
+
+=== Symptom Analysis ===
+Symptoms:
+- Persistent headache lasting for three weeks
+
+Possible Causes:
+- Tension headache
+- Chronic migraine
+- Medication overuse headache
+- Cervicogenic headache
+- New daily persistent headache
