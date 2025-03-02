@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-input">
+    <h1>Enter the reason for your visit</h1>
+    
+    <form action="{{ url_for('submit_reason') }}" method="post">
+        <div class="form-group">
+            <textarea id="reason" name="reason" rows="5" placeholder="Please describe why you're visiting today..."></textarea>
+        </div>
+        
+        <button type="submit" class="btn primary-btn">Continue</button>
+    </form>
+</div>
+{% endblock %}

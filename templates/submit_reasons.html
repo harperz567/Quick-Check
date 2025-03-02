@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="final-confirmation">
+    <h1>Check-in Complete</h1>
+    
+    <div class="confirmation-details">
+        <h2>Your Information</h2>
+        <p><strong>Name:</strong> {{ name }}</p>
+        <p><strong>Insurance:</strong> {{ insurance_name }}</p>
+        <p><strong>Insurance ID:</strong> {{ insurance_id }}</p>
+        <p><strong>Medications:</strong> {{ medications or 'None' }}</p>
+        <p><strong>Medical Conditions:</strong> {{ conditions or 'None' }}</p>
+        <p><strong>Reason for Visit:</strong> {{ visit_reason }}</p>
+    </div>
+    
+    <div class="checkmark-container">
+        <div class="checkmark">
+            <div class="checkmark-circle"></div>
+            <div class="checkmark-stem"></div>
+            <div class="checkmark-kick"></div>
+        </div>
+    </div>
+    
+    <p>Please have a seat. We'll call you when the doctor is ready.</p>
+</div>
+{% endblock %}

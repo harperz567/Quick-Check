@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="voice-input">
+    <h1>Tell us the reason for your visit</h1>
+    
+    <div class="voice-recorder">
+        <div class="sound-wave">
+            <object type="image/svg+xml" data="{{ url_for('static', filename='images/Sound wave.svg') }}" class="wave-svg"></object>
+        </div>
+        
+        <p id="recording-status">Listening...</p>
+        
+        <form action="{{ url_for('submit_reason') }}" method="post" id="voice-form">
+            <input type="hidden" id="reason" name="reason" value="">
+            <button type="button" id="stop-recording" class="btn primary-btn">Stop</button>
+            <button type="submit" class="btn primary-btn">Continue</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // This is a simplified version - in a real app, you'd use the Web Speech API
+    let isRecording = true;
+    
+    document.getElementById('stop-recording').addEventListener('click', function() {
+        if (isRecording) {
+            document.getElementById('recording-status').textContent = 'Recording stopped';
+            document.getElementById('reason').value = 'Sample voice input reason';
+            isRecording = false;
+            this.textContent = 'Resume';
+        } else {
+            document.getElementById('recording-status').textContent = 'Listening...';
+            isRecording = true;
+            this.textContent = 'Stop';
+        }
+    });
+</script>
+{% endblock %}

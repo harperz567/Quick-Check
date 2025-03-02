@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="appointment-confirmation">
+    <div class="logo-container">
+        <svg class="smiley-logo" viewBox="0 0 104 108" xmlns="http://www.w3.org/2000/svg">
+            <path d="M69.1994 3.87562C107.079 19.7856 116.529 68.3756 83.7395 95.3756C42.6895 129.186 -13.3406 84.7356 3.26945 36.1156C11.7694 11.2356 44.0094 -6.70438 69.1994 3.87562Z" fill="#2B422E"/>
+            <path d="M64.6095 69.3658C65.1895 68.9258 65.5095 67.6058 66.2695 66.9358C68.9795 64.5558 71.4295 65.0458 70.2795 69.0458C68.3395 75.7758 53.6495 77.6558 47.9095 77.0258C43.7695 76.5758 33.1595 72.2658 33.5895 67.3858C34.1095 61.5058 38.7395 68.7258 40.3595 69.8658C46.8295 74.4358 58.3295 74.1358 64.6195 69.3558L64.6095 69.3658Z" fill="#FCFCFE"/>
+            <path d="M66.0695 50.1557C63.2295 47.3157 66.3395 41.4757 70.4195 43.4457C75.9395 46.1257 70.2595 54.3357 66.0695 50.1557Z" fill="#F8F9FE"/>
+            <path d="M38.0195 44.1961C40.8595 47.0361 37.7495 52.8761 33.6695 50.9061C28.1495 48.2261 33.8295 40.0161 38.0195 44.1961Z" fill="#F8F9FE"/>
+        </svg>
+    </div>
+    
+    <h1>Thank you! You are all set!</h1>
+    
+    <div class="qr-code-container">
+        <img src="{{ url_for('static', filename='images/qr-code.png') }}" alt="QR Code" class="qr-code">
+        <p>Scan QR code to save appointment information</p>
+    </div>
+    
+    <div class="appointment-details">
+        <div class="detail-row">
+            <span class="detail-label">Wait Time:</span>
+            <span class="detail-value pill-badge">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" fill="currentColor"/>
+                    <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="currentColor"/>
+                </svg>
+                1 Hour
+            </span>
+        </div>
+        
+        <div class="detail-row">
+            <span class="detail-label">Doctor:</span>
+            <span class="detail-value pill-badge">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path d="M19 3H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 11h-4v4h-4v-4H6v-4h4V6h4v4h4v4z" fill="currentColor"/>
+                </svg>
+                Dr. Smith
+            </span>
+        </div>
+        
+        <div class="detail-row">
+            <span class="detail-label">Location:</span>
+            <span class="detail-value pill-badge">
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
+                </svg>
+                Floor 3, Room 501
+            </span>
+        </div>
+    </div>
+</div>
+{% endblock %}

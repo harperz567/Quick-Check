@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="confirmation-screen">
+    <h1>Great!</h1>
+    <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="QuickCheck Logo" class="logo">
+    <div class="auto-redirect">
+        <p>Continuing automatically...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    setTimeout(function() {
+        window.location.href = "{{ url_for('reason_for_visit') }}";
+    }, 3000);
+</script>
+{% endblock %}

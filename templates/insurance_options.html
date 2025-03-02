@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="insurance-options">
+    <h1>Insurance Information</h1>
+    
+    <div class="options-container">
+        <a href="{{ url_for('scan_insurance') }}" class="btn primary-btn">Scan Insurance</a>
+        
+        <div class="or-divider">OR</div>
+        
+        <a href="{{ url_for('manual_insurance') }}" class="btn primary-btn">Enter Manually</a>
+    </div>
+</div>
+{% endblock %}

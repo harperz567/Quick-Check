@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="confirmation-screen">
+    <h1>Nice to meet you {{ name }}!</h1>
+    <div class="checkmark-container">
+        <!-- <div class="checkmark">
+            <div class="checkmark-circle"></div>
+            <div class="checkmark-stem"></div>
+            <div class="checkmark-kick"></div>
+        </div> -->
+        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="QuickCheck Logo" class="logo">
+    </div>
+    <div class="auto-redirect">
+        <p>Continuing automatically...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    setTimeout(function() {
+        window.location.href = "{{ url_for('insurance_options') }}";
+    }, 3000);
+</script>
+{% endblock %}

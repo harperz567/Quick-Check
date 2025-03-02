@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="reason-for-visit">
+    <h1>What's the reason for you visit today?</h1>
+    
+    <div class="input-options">
+        <a href="{{ url_for('voice_input') }}" class="input-option">
+            <div class="option-icon mic-icon"></div>
+            <p>Press to Speak</p>
+        </a>
+        
+        <a href="{{ url_for('text_input') }}" class="input-option">
+            <div class="option-icon keyboard-icon"></div>
+            <p>Press to Type</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="manual-insurance">
+    <h1>We just need a little more information</h1>
+    
+    <form action="{{ url_for('submit_insurance') }}" method="post">
+        <div class="form-group">
+            <label for="insurance_name">Insurance Name</label>
+            <input type="text" id="insurance_name" name="insurance_name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="insurance_id">Insurance ID</label>
+            <input type="text" id="insurance_id" name="insurance_id" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="medications">Are you on any medications? If so, please list.</label>
+            <input type="text" id="medications" name="medications">
+        </div>
+        
+        <div class="form-group">
+            <label for="conditions">Do you have any medical conditions?</label>
+            <input type="text" id="conditions" name="conditions">
+        </div>
+        
+        <button type="submit" class="btn primary-btn next-btn">Next</button>
+    </form>
+</div>
+{% endblock %}
