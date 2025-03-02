@@ -15,22 +15,21 @@ UPLOAD_FOLDER = 'uploads'
 AUDIO_FOLDER = 'recordings'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['AUDIO_FOLDER'] = AUDIO_FOLDER
+# API key
+aai.settings.api_key = "22fa4a1dec48432788774b3950b66ca0"
+transcriber = aai.Transcriber()
+PERPLEXITY_API_KEY = "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"
 
-# 确保上传文件夹存在
+
+# Make sure the folder exists
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 if not os.path.exists(AUDIO_FOLDER):
     os.makedirs(AUDIO_FOLDER)
 
-# API密钥设置
-aai.settings.api_key = ""
-transcriber = aai.Transcriber()
-PERPLEXITY_API_KEY = ""
-
-# 数据文件路径
 PATIENT_DATA_FILE = 'patients.txt'
 
-# 加载病人数据
+# Load patient data
 def load_patient_data():
     if os.path.exists(PATIENT_DATA_FILE):
         try:
@@ -41,32 +40,46 @@ def load_patient_data():
             return {}
     return {}
 
-# 保存病人数据
+# Save data
 def save_patient_data(patient_info):
     with open(PATIENT_DATA_FILE, 'w', encoding='utf-8') as file:
         file.write(json.dumps(patient_info, ensure_ascii=False))
 
-# 1.欢迎页面路由
+# 1.Welcome page
 @app.route('/')
 def welcome():
+    session.clear()  # Clear all previous data
     return render_template('welcome.html')
 
-# 2.扫描选项页面路由
+# 2.Scan page
 @app.route('/scan_options')
 def scan_options():
     return render_template('scan_options.html')
 
-# 4.手动输入页面路由
+# Modify the manual_entry function to ensure that the birthday information is also passed to the template
 @app.route('/manual_entry')
 def manual_entry():
-    return render_template('manual_entry.html')
+    # If session has data, prepopulate
+    # delete this !!!!!!!!!!!!
+    name = session.get('name', '')
+    dob = session.get('dob', '')
+    return render_template('manual_entry.html', name=name, dob=dob)
 
-# 5.
+
+# Update welcome_confirmation 
 @app.route('/welcome_confirmation', methods=['POST'])
 def welcome_confirmation():
     name = request.form.get('name', '')
+    dob = request.form.get('dob', '')  
+    
+    # Save into session
     session['name'] = name
+    if dob:  
+        session['dob'] = dob
+    
     return render_template('welcome_confirmation.html', name=name)
+
+
 
 # 6.
 @app.route('/insurance_options')
@@ -83,12 +96,12 @@ def manual_insurance():
 def reason_for_visit():
     return render_template('reason_for_visit.html')
 
-# 9. 语音输入页面
+# 9. Voice input page
 @app.route('/voice_input')
 def voice_input():
     return render_template('voice_input.html')
 
-# 文本输入页面
+# Text input page
 @app.route('/text_input')
 def text_input():
     return render_template('text_input.html')
@@ -170,7 +183,7 @@ def confirmation():
                           possible_causes=possible_causes,
                           analysis_filename=session.get('analysis_filename', ''))
 
-# AssemblyAI音频转文本
+# AssemblyAI turn audio into txt file
 def assembly(audio):
     transcript = transcriber.transcribe(audio)
     text = transcript.text
@@ -259,9 +272,10 @@ def save_analysis_to_file(patient_name, text, analysis):
     today_date = datetime.datetime.now().strftime("%Y%m%d")
     
     # Clean up the name and DOB for use in filename
-    safe_name = ''.join(c if c.isalnum() else '_' for c in patient_name) if patient_name else "unknown"
-    safe_dob = ''.join(c if c.isalnum() else '_' for c in patient_dob) if patient_dob else "nodob"
-    
+    safe_name = ''.join(c if c.isalnum() else '·' for c in patient_name) if patient_name else "unknown"
+    # Keep only alphabetic and numeric characters, directly remove all other characters
+    safe_dob = ''.join(c for c in patient_dob if c.isalnum()) if patient_dob else "nodob"
+
     # Create filename: name-dob-date.txt
     filename = f"{safe_name}-{safe_dob}-{today_date}.txt"
     filepath = os.path.join(ANALYSIS_FOLDER, filename)
@@ -364,58 +378,59 @@ def submit_insurance():
 def scan_insurance():
     return render_template('scan_insurance.html')
 
-# 添加录音API
+# Start recording
 @app.route('/api/start_recording', methods=['POST'])
 def start_recording():
-    # 这个API将在前端调用，启动录音功能
-    # 由于我们不能在服务器端直接启动录音界面，这个功能需要前端JavaScript实现
-    # 这里只返回一个成功标记，表示服务器已准备好接收录音
+    # This API will be called from the frontend to initiate the recording feature
+    # Since we can't directly launch the recording interface on the server side, this functionality needs to be implemented via frontend JavaScript
+    # Here is only returns a success flag, indicating that the server is ready to receive the recording
     return jsonify({'status': 'ready'})
 
-# 添加音频文件访问路由
+# Fetch recording
 @app.route('/recordings/<filename>')
 def get_recording(filename):
     return send_from_directory(app.config['AUDIO_FOLDER'], filename)
 
-# 提交病人信息处理
 @app.route('/submit_info', methods=['POST'])
 def submit_info():
     name = request.form.get('name')
     dob = request.form.get('dob')
     
     if not name or not dob:
-        return "姓名和出生日期不能为空", 400
+        return "Name and date of birth is required", 400
     
-    # 加载现有数据
+    # Save name and dob in session 
+    session['name'] = name
+    session['dob'] = dob
+    
+    # Upload data
     patient_info = load_patient_data()
     
-    # 将病人信息添加到系统（如果不存在）
+    # Add patient if not exist
     if name not in patient_info:
         patient_info[name] = {}
         
     if dob not in patient_info[name]:
         patient_info[name][dob] = []
     
-    # 保存数据
+    # Save data 
     save_patient_data(patient_info)
     return render_template('welcome_confirmation.html', name=name)
 
-# 检查病人API (可选，如果需要前端AJAX)
-@app.route('/api/check_patient', methods=['POST'])
-def check_patient():
-    data = request.json
-    name = data.get('name')
-    dob = data.get('dob')
+
+# # Check patient 
+# @app.route('/api/check_patient', methods=['POST'])
+# def check_patient():
+#     data = request.json
+#     name = data.get('name')
+#     dob = data.get('dob')
     
-    if not name or not dob:
-        return jsonify({"error": "姓名和出生日期不能为空"}), 400
+#     patient_info = load_patient_data()
     
-    patient_info = load_patient_data()
-    
-    if name in patient_info and dob in patient_info[name]:
-        return jsonify({"exists": True})
-    else:
-        return jsonify({"exists": False})
+#     if name in patient_info and dob in patient_info[name]:
+#         return jsonify({"exists": True})
+#     else:
+#         return jsonify({"exists": False})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='127.0.0.1', debug=True)

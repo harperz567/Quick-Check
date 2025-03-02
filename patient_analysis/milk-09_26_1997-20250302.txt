@@ -1,0 +1,18 @@
+Patient Name: milk
+Patient DOB: 09/26/1997
+Record Time: 2025-03-02 03:41:46
+
+=== Patient Description ===
+I have a headache. I have it for three weeks. It's really painful.
+
+=== Symptom Analysis ===
+Symptoms:
+- Headache lasting for three weeks
+- Severe pain
+
+Possible Causes:
+- Chronic tension headache
+- Chronic migraine
+- New daily persistent headache
+- Medication overuse headache
+- Cervicogenic headache

@@ -4,7 +4,8 @@
 <div class="voice-input">
     <h1>Tell us the reason for your visit</h1>
     
-    <div class="voice-recorder">
+    <!-- Recording page(Hide after recording) -->
+    <div id="recording-interface" class="voice-recorder">
         <div class="sound-wave">
             <object type="image/svg+xml" data="{{ url_for('static', filename='images/Sound wave.svg') }}" class="wave-svg"></object>
         </div>
@@ -12,28 +13,24 @@
         <p id="recording-status">Listening...</p>
         <p id="timer">00:00</p>
         
-        <form action="{{ url_for('submit_reason') }}" method="post" id="voice-form">
-            <input type="hidden" id="reason" name="reason" value="">
-            <button type="button" id="record-button" class="btn primary-btn">Stop</button>
-            <button type="submit" id="continue-button" class="btn primary-btn" disabled>Continue</button>
-        </form>
+        <button type="button" id="record-button" class="btn primary-btn">Stop</button>
     </div>
     
+    <!-- Result page -->
     <div id="results" style="display: none;" class="results-container">
-        <h2>Your symptom description:</h2>
-        <div id="transcription" class="transcription-box"></div>
-        
-        <h2>Symptom analysis:</h2>
-        <div id="analysis">
-            <h4>Symptoms:</h4>
-            <ul id="symptoms-list"></ul>
+        <div class="analysis-centered">
+            <h2>Symptom analysis:</h2>
+            <div id="analysis">
+                <ul id="symptoms-list"></ul>
+            </div>
             
-            <h4>Possible causes:</h4>
-            <ul id="causes-list"></ul>
-        </div>
-        
-        <div class="action-buttons">
-            <button id="retry-button" class="btn secondary-btn">Record again</button>
+            <div class="action-buttons">
+                <button id="retry-button" class="btn secondary-btn">Record again</button>
+                <form action="{{ url_for('submit_reason') }}" method="post" id="voice-form" style="display: inline;">
+                    <input type="hidden" id="reason" name="reason" value="">
+                    <button type="submit" id="continue-button" class="btn primary-btn">Continue</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -53,9 +50,8 @@
     const recordingStatus = document.getElementById('recording-status');
     const timer = document.getElementById('timer');
     const results = document.getElementById('results');
-    const transcription = document.getElementById('transcription');
+    const recordingInterface = document.getElementById('recording-interface');
     const symptomsList = document.getElementById('symptoms-list');
-    const causesList = document.getElementById('causes-list');
     const reasonInput = document.getElementById('reason');
     
     // Start recording when page loads
@@ -119,10 +115,12 @@
     }
     
     function resetAndStartRecording() {
+        // Hide and display
         results.style.display = 'none';
+        recordingInterface.style.display = 'block';
+        
         audioChunks = [];
         timer.textContent = '00:00';
-        continueButton.disabled = true;
         startRecording();
     }
     
@@ -141,7 +139,7 @@
         formData.append('audio', audioBlob, 'recording.wav');
         
         // Show loading status
-        recordingStatus.textContent = 'Analyzing your symptoms...';
+        recordingStatus.textContent = 'Analyzing your symptoms...\nPlease wait';
         
         // Send to server
         fetch('/api/process_audio', {
@@ -164,142 +162,95 @@
     
     
     function displayResults(data) {
-    // Update recording status
-    recordingStatus.textContent = 'Recording complete';
-    
-    // Set form value for submission
-    reasonInput.value = data.text;
-    
-    // Show transcription
-    transcription.textContent = data.text;
-    
-    // Clear previous results
-    symptomsList.innerHTML = '';
-    causesList.innerHTML = '';
-    
-    // Display analysis results
-    if (data.analysis) {
-        try {
-            let analysisObj = data.analysis;
-            
-            // If analysis is a string, try to parse it as an object
-            if (typeof data.analysis === 'string') {
-                // Try to find the beginning and end of the dictionary
-                const start = data.analysis.indexOf('{');
-                const end = data.analysis.lastIndexOf('}') + 1;
-                if (start >= 0 && end > start) {
-                    try {
-                        const jsonStr = data.analysis.substring(start, end)
-                            .replace(/'/g, '"') // Replace single quotes with double quotes
-                            .replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3'); // Add double quotes to keys
-                        analysisObj = JSON.parse(jsonStr);
-                    } catch (e) {
-                        console.error("Failed to parse analysis result:", e);
+        // Set form value for submission
+        reasonInput.value = data.text;
+        
+        // Clear previous results
+        symptomsList.innerHTML = '';
+        
+        // Display analysis results
+        if (data.analysis) {
+            try {
+                let analysisObj = data.analysis;
+                
+                // If analysis is a string, try to parse it as an object
+                if (typeof data.analysis === 'string') {
+                    // Try to find the beginning and end of the dictionary
+                    const start = data.analysis.indexOf('{');
+                    const end = data.analysis.lastIndexOf('}') + 1;
+                    if (start >= 0 && end > start) {
+                        try {
+                            const jsonStr = data.analysis.substring(start, end)
+                                .replace(/'/g, '"') // Replace single quotes with double quotes
+                                .replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3'); // Add double quotes to keys
+                            analysisObj = JSON.parse(jsonStr);
+                        } catch (e) {
+                            console.error("Failed to parse analysis result:", e);
+                        }
                     }
                 }
-            }
-            
-            // Process symptoms
-            if (analysisObj.symptoms && Array.isArray(analysisObj.symptoms)) {
-                analysisObj.symptoms.forEach(symptom => {
+                
+                // Process symptoms
+                if (analysisObj.symptoms && Array.isArray(analysisObj.symptoms)) {
+                    analysisObj.symptoms.forEach(symptom => {
+                        const li = document.createElement('li');
+                        li.textContent = symptom;
+                        symptomsList.appendChild(li);
+                    });
+                } else {
                     const li = document.createElement('li');
-                    li.textContent = symptom;
+                    li.textContent = "Headache";
                     symptomsList.appendChild(li);
-                });
-            } else {
+                    
+                    if (data.text.toLowerCase().includes("week")) {
+                        const li = document.createElement('li');
+                        li.textContent = "Persisting for about a week";
+                        symptomsList.appendChild(li);
+                    }
+                    
+                    if (data.text.toLowerCase().includes("noise") || data.text.toLowerCase().includes("hear")) {
+                        const li = document.createElement('li');
+                        li.textContent = "Hearing noises in head";
+                        symptomsList.appendChild(li);
+                    }
+                }
+                
+            } catch (error) {
+                console.error("Error processing analysis results:", error);
+                fallbackDisplay();
+            }
+        } else {
+            fallbackDisplay();
+        }
+        
+        // Fallback display function
+        function fallbackDisplay() {
+            // Extract basic symptoms
+            const text = data.text.toLowerCase();
+            
+            // Add symptoms
+            if (text.includes("headache")) {
                 const li = document.createElement('li');
                 li.textContent = "Headache";
                 symptomsList.appendChild(li);
-                
-                if (data.text.toLowerCase().includes("week")) {
-                    const li = document.createElement('li');
-                    li.textContent = "Persisting for about a week";
-                    symptomsList.appendChild(li);
-                }
-                
-                if (data.text.toLowerCase().includes("noise") || data.text.toLowerCase().includes("hear")) {
-                    const li = document.createElement('li');
-                    li.textContent = "Hearing noises in head";
-                    symptomsList.appendChild(li);
-                }
             }
             
-            // Process possible causes
-            const causesKey = "possible causes";
-            if (analysisObj[causesKey] && Array.isArray(analysisObj[causesKey])) {
-                analysisObj[causesKey].forEach(cause => {
-                    const li = document.createElement('li');
-                    li.textContent = cause;
-                    causesList.appendChild(li);
-                });
-            } else {
-                // Default possible causes
-                const defaultCauses = [
-                    "Tension headache",
-                    "Migraine",
-                    "Tinnitus",
-                    "Inner ear issues",
-                    "Hypertension"
-                ];
-                
-                defaultCauses.forEach(cause => {
-                    const li = document.createElement('li');
-                    li.textContent = cause;
-                    causesList.appendChild(li);
-                });
+            if (text.includes("week")) {
+                const li = document.createElement('li');
+                li.textContent = "Persisting for about a week";
+                symptomsList.appendChild(li);
             }
-        } catch (error) {
-            console.error("Error processing analysis results:", error);
-            fallbackDisplay();
+            
+            if (text.includes("noise") || text.includes("hear")) {
+                const li = document.createElement('li');
+                li.textContent = "Hearing noises in head";
+                symptomsList.appendChild(li);
+            }
         }
-    } else {
-        fallbackDisplay();
+        
+        // Hide and display
+        recordingInterface.style.display = 'none';
+        results.style.display = 'block';
     }
-    
-    // Fallback display function
-    function fallbackDisplay() {
-        // Extract basic symptoms
-        const text = data.text.toLowerCase();
-        
-        // Add symptoms
-        if (text.includes("headache")) {
-            const li = document.createElement('li');
-            li.textContent = "Headache";
-            symptomsList.appendChild(li);
-        }
-        
-        if (text.includes("week")) {
-            const li = document.createElement('li');
-            li.textContent = "Persisting for about a week";
-            symptomsList.appendChild(li);
-        }
-        
-        if (text.includes("noise") || text.includes("hear")) {
-            const li = document.createElement('li');
-            li.textContent = "Hearing noises in head";
-            symptomsList.appendChild(li);
-        }
-        
-        // Add possible causes
-        const defaultCauses = [
-            "Tension headache",
-            "Migraine",
-            "Tinnitus",
-            "Inner ear issues"
-        ];
-        
-        defaultCauses.forEach(cause => {
-            const li = document.createElement('li');
-            li.textContent = cause;
-            causesList.appendChild(li);
-        });
-    }
-    
-    // Show results area
-    results.style.display = 'block';
-    
-    // Enable continue button
-    continueButton.disabled = false;
-}
 </script>
 {% endblock %}

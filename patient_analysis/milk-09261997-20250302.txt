@@ -1,0 +1,19 @@
+Patient Name: milk
+Patient DOB: 09/26/1997
+Record Time: 2025-03-02 04:53:38
+
+=== Patient Description ===
+I had a headache for three days is very painful.
+
+=== Symptom Analysis ===
+Symptoms:
+- Headache lasting for three days
+- Severe pain
+
+Possible Causes:
+- Tension-type headache
+- Migraine
+- Medication overuse headache
+- Dehydration
+- Stress
+- Sleep disturbances

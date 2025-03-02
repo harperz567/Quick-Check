@@ -12,12 +12,13 @@
         <form action="{{ url_for('submit_info') }}" method="post">
             <div class="form-group">
                 <label for="name">Name</label>
-                <!-- <img src="{{ url_for('static', filename='images/FC.png') }}"> -->
-                <input type="text" id="name" name="name" placeholder="Value" required>
+                <!-- 添加value属性来预填表单 -->
+                <input type="text" id="name" name="name" placeholder="Value" value="{{ name }}" required>
             </div>
             <div class="form-group">
                 <label for="dob">DOB</label>
-                <input type="text" id="dob" name="dob" placeholder="Value" required>
+                <!-- 添加value属性来预填表单 -->
+                <input type="text" id="dob" name="dob" placeholder="Value" value="{{ dob }}" required>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn next-btn">Next</button>
