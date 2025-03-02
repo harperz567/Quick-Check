@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickCheck - Patient Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Welcome back!</h1>
+        <div class="patient-card">
+            <h2>{{ name }}</h2>
+            <p><strong>Date of Birth:</strong> {{ dob }}</p>
+            <p><strong>Sex:</strong> {{ sex }}</p>
+            <p><strong>Insurance:</strong> {{ insurance }}</p>
+            
+            <div class="section">
+                <h3>Previous Symptoms</h3>
+                <p>{{ symptoms }}</p>
+            </div>
+            
+            <div class="section">
+                <h3>Current Medications</h3>
+                <p>{{ medication }}</p>
+            </div>
+            
+            <div class="actions">
+                <a href="{{ url_for('update_patient', name=name, dob=dob) }}" class="btn">Update Information</a>
+                <a href="{{ url_for('check_in', name=name, dob=dob) }}" class="btn primary-btn">Check In Now</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

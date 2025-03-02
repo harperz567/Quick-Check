@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <!-- Background - Transparent -->
+  <rect width="400" height="300" fill="transparent"/>
+  
+  <!-- Dashed Card Outline (Initial State) -->
+  <rect id="dashedOutline" x="100" y="80" width="200" height="140" rx="10" ry="10" fill="none" stroke="#2D4F39" stroke-width="1.5" stroke-dasharray="5,5">
+    <animate attributeName="opacity" values="1;1;0;0;0;0" dur="5s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- Corner Indicators -->
+  <g id="cornerIndicators">
+    <path d="M100,80 L120,80 M100,80 L100,100" stroke="#2D4F39" stroke-width="2" fill="none" stroke-linecap="round">
+      <animate attributeName="opacity" values="1;1;0;0;0;0" dur="5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M300,80 L280,80 M300,80 L300,100" stroke="#2D4F39" stroke-width="2" fill="none" stroke-linecap="round">
+      <animate attributeName="opacity" values="1;1;0;0;0;0" dur="5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M100,220 L120,220 M100,220 L100,200" stroke="#2D4F39" stroke-width="2" fill="none" stroke-linecap="round">
+      <animate attributeName="opacity" values="1;1;0;0;0;0" dur="5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M300,220 L280,220 M300,220 L300,200" stroke="#2D4F39" stroke-width="2" fill="none" stroke-linecap="round">
+      <animate attributeName="opacity" values="1;1;0;0;0;0" dur="5s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  
+  <!-- Solid Card Outline (Appears after card positioned) -->
+  <rect id="solidOutline" x="100" y="80" width="200" height="140" rx="10" ry="10" fill="#FDF7ED" stroke="#2D4F39" stroke-width="1.5" opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;1;1" dur="5s" repeatCount="indefinite"/>
+  </rect>
+  
+  <!-- Card Content - Simple Layout -->
+  <g id="cardContent" opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;1;1" dur="5s" repeatCount="indefinite"/>
+    
+    <!-- Photo -->
+    <rect x="120" y="100" width="60" height="70" rx="5" ry="5" fill="none" stroke="#2D4F39" stroke-width="1"/>
+    <circle cx="150" cy="125" r="15" fill="none" stroke="#2D4F39" stroke-width="1"/>
+    <path d="M135,145 C135,135 165,135 165,145" stroke="#2D4F39" stroke-width="1" fill="none"/>
+    
+    <!-- Text Lines -->
+    <line x1="190" y1="110" x2="280" y2="110" stroke="#2D4F39" stroke-width="1" stroke-linecap="round"/>
+    <line x1="190" y1="125" x2="270" y2="125" stroke="#2D4F39" stroke-width="1" stroke-linecap="round"/>
+    <line x1="120" y1="185" x2="280" y2="185" stroke="#2D4F39" stroke-width="1" stroke-linecap="round"/>
+    <line x1="120" y1="200" x2="220" y2="200" stroke="#2D4F39" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Pulse Effect -->
+  <g id="pulseEffect" opacity="0">
+    <animate attributeName="opacity" values="0;0;0.6;0.4;0.2;0" dur="5s" repeatCount="indefinite"/>
+    <rect x="95" y="75" width="210" height="150" rx="12" ry="12" fill="none" stroke="#4C9CA6" stroke-width="1.5"/>
+    <rect x="90" y="70" width="220" height="160" rx="15" ry="15" fill="none" stroke="#4C9CA6" stroke-width="1">
+      <animate attributeName="width" values="220;225;220" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+      <animate attributeName="height" values="160;165;160" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+      <animate attributeName="x" values="90;87.5;90" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+      <animate attributeName="y" values="70;67.5;70" dur="2s" repeatCount="indefinite" begin="1.5s"/>
+    </rect>
+  </g>
+  
+  <!-- Scanning Line -->
+  <line id="scanLine" x1="100" y1="80" x2="300" y2="80" stroke="#4C9CA6" stroke-width="2" stroke-linecap="round" opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0;0" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="y1" values="80;80;100;200;220;220" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="y2" values="80;80;100;200;220;220" dur="5s" repeatCount="indefinite"/>
+  </line>
+  
+  <!-- Scanning Highlight Area -->
+  <rect id="scanHighlight" x="100" y="80" width="200" height="0" fill="#4C9CA6" opacity="0">
+    <animate attributeName="opacity" values="0;0;0.1;0.1;0;0" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="height" values="0;0;20;120;140;140" dur="5s" repeatCount="indefinite"/>
+  </rect>
+</svg>

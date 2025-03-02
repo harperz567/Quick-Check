@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickCheck - Confirmation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="confirmation-box">
+            <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Success" class="success-icon">
+            <h1 class="title">Check-in Complete!</h1>
+            <p>Your information has been saved. Please wait for your name to be called.</p>
+            <p class="queue-info">Current queue time: Approximately 15 minutes</p>
+            
+            <a href="{{ url_for('welcome') }}" class="btn">Done</a>
+        </div>
+    </div>
+</body>
+</html>

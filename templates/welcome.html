@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickCheck - Welcome</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="QuickCheck Logo" class="logo">
+        </div>
+        <h1 class="title">Hello! Ready to check in?</h1>
+        <a href="{{ url_for('scan_options') }}" class="btn">Start</a>
+    </div>
+</body>
+</html>
