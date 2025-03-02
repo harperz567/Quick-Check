@@ -8,17 +8,19 @@ import pyaudio
 import assemblyai as aai
 from openai import OpenAI
 from werkzeug.utils import secure_filename
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 app.secret_key = 'your_secret_key'  # Required for session to work
 UPLOAD_FOLDER = 'uploads'
 AUDIO_FOLDER = 'recordings'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['AUDIO_FOLDER'] = AUDIO_FOLDER
 # API key
-aai.settings.api_key = "22fa4a1dec48432788774b3950b66ca0"
+aai.settings.api_key = ""
 transcriber = aai.Transcriber()
-PERPLEXITY_API_KEY = "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"
+PERPLEXITY_API_KEY = ""
 
 
 # Make sure the folder exists
@@ -432,5 +434,7 @@ def submit_info():
 #     else:
 #         return jsonify({"exists": False})
 
+# if __name__ == '__main__':
+#     app.run(host='127.0.0.1', debug=True)
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)

@@ -1,19 +1,20 @@
 Patient Name: milk
 Patient DOB: 09/26/1997
-Record Time: 2025-03-02 04:53:38
+Record Time: 2025-03-02 08:11:44
 
 === Patient Description ===
-I had a headache for three days is very painful.
+Hi. I have a headache recently and it's been three or four days. It's getting even more and more severe. And when I lie down, it is even more painful. I don't know what's wrong. So now.
 
 === Symptom Analysis ===
 Symptoms:
-- Headache lasting for three days
-- Severe pain
+- Headache for 3-4 days
+- Increasing severity
+- Pain worsens when lying down
 
 Possible Causes:
-- Tension-type headache
+- Tension headache
 - Migraine
-- Medication overuse headache
-- Dehydration
-- Stress
-- Sleep disturbances
+- Cervicogenic headache
+- Nasal congestion
+- Increased intracranial pressure
+- Sinus infection
