@@ -1,116 +1,151 @@
-from flask import Flask, request, render_template, jsonify, redirect, url_for, session, send_from_directory
-import json
-import os
-import wave
-import time
-import threading
-import pyaudio
-import assemblyai as aai
-from openai import OpenAI
+from flask import Flask, render_template, redirect, url_for, request, jsonify, session, send_from_directory, g
 from werkzeug.utils import secure_filename
-from flask_cors import CORS
+from config import config
+from models import db
+from flask_migrate import Migrate
+import os
+import time
+import json
+from datetime import datetime
+from auth.decorators import require_auth, require_auth_page, require_role
 
+# 创建Flask应用
 app = Flask(__name__)
-CORS(app)
-app.secret_key = 'your_secret_key'  # Required for session to work
-UPLOAD_FOLDER = 'uploads'
-AUDIO_FOLDER = 'recordings'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['AUDIO_FOLDER'] = AUDIO_FOLDER
-# API key
-aai.settings.api_key = ""
-transcriber = aai.Transcriber()
-PERPLEXITY_API_KEY = ""
 
+# 加载配置
+env = os.getenv('FLASK_ENV', 'development')
+app.config.from_object(config[env])
 
-# Make sure the folder exists
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-if not os.path.exists(AUDIO_FOLDER):
-    os.makedirs(AUDIO_FOLDER)
+# 初始化数据库
+db.init_app(app)
+migrate = Migrate(app, db)
 
-PATIENT_DATA_FILE = 'patients.txt'
+# 注册蓝图
+from routes import auth_bp, patient_bp, visit_bp
+app.register_blueprint(auth_bp)
+app.register_blueprint(patient_bp)
+app.register_blueprint(visit_bp)
 
-# Load patient data
-def load_patient_data():
-    if os.path.exists(PATIENT_DATA_FILE):
-        try:
-            with open(PATIENT_DATA_FILE, 'r', encoding='utf-8') as file:
-                return json.loads(file.read())
-        except Exception as e:
-            print(f"加载数据错误: {e}")
-            return {}
-    return {}
+# 确保文件夹存在
+UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
+AUDIO_FOLDER = app.config['AUDIO_FOLDER']
+ANALYSIS_FOLDER = app.config['ANALYSIS_FOLDER']
 
-# Save data
-def save_patient_data(patient_info):
-    with open(PATIENT_DATA_FILE, 'w', encoding='utf-8') as file:
-        file.write(json.dumps(patient_info, ensure_ascii=False))
+for folder in [UPLOAD_FOLDER, AUDIO_FOLDER, ANALYSIS_FOLDER]:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
 
-# 1.Welcome page
+# ==================== 页面路由 ====================
+
 @app.route('/')
-def welcome():
-    session.clear()  # Clear all previous data
-    return render_template('welcome.html')
+def index():
+    """首页 - 重定向到登录"""
+    return redirect(url_for('login_page'))
 
-# 2.Scan page
-@app.route('/scan_options')
-def scan_options():
-    return render_template('scan_options.html')
+@app.route('/login')
+def login_page():
+    """登录页面"""
+    return render_template('login.html')
 
-# Modify the manual_entry function to ensure that the birthday information is also passed to the template
-@app.route('/manual_entry')
-def manual_entry():
-    # If session has data, prepopulate
-    # delete this !!!!!!!!!!!!
-    name = session.get('name', '')
-    dob = session.get('dob', '')
-    return render_template('manual_entry.html', name=name, dob=dob)
+@app.route('/register')
+def register_page():
+    """注册页面"""
+    return render_template('register.html')
 
+@app.route('/dashboard')
+def dashboard():
+    """Dashboard - Staff专用"""
+    return render_template('dashboard.html')
 
-# Update welcome_confirmation 
-@app.route('/welcome_confirmation', methods=['POST'])
-def welcome_confirmation():
-    name = request.form.get('name', '')
-    dob = request.form.get('dob', '')  
-    
-    # Save into session
-    session['name'] = name
-    if dob:  
-        session['dob'] = dob
-    
-    return render_template('welcome_confirmation.html', name=name)
+@app.route('/patient/welcome')
+def patient_welcome():
+    """患者欢迎页 - 登录后进入"""
+    return render_template('patient_welcome.html')
 
+# ==================== 患者登记流程路由（需要认证）====================
 
+from auth.decorators import require_auth, require_role
 
-# 6.
 @app.route('/insurance_options')
+@require_auth_page
 def insurance_options():
+    """保险选项"""
     return render_template('insurance_options.html')
 
-# 7.
 @app.route('/manual_insurance')
+@require_auth_page
 def manual_insurance():
+    """手动输入保险信息"""
     return render_template('manual_insurance.html')
 
-# 8.
+@app.route('/submit_insurance', methods=['POST'])
+@require_auth
+def submit_insurance():
+    """提交保险信息"""
+    from models import Patient, Insurance
+    from security.encryption import encrypt_data
+    from security.audit import log_action
+    
+    # 获取当前患者
+    patient = Patient.query.filter_by(user_id=g.user_id).first()
+    if not patient:
+        return jsonify({'error': 'Patient not found'}), 404
+    
+    # 处理保险信息
+    insurance = Insurance.query.filter_by(patient_id=patient.id).first()
+    if not insurance:
+        insurance = Insurance(patient_id=patient.id)
+    
+    insurance.insurance_name = request.form.get('insurance_name', '')
+    insurance_id = request.form.get('insurance_id', '')
+    if insurance_id:
+        insurance.encrypted_insurance_id = encrypt_data(insurance_id)
+    
+    insurance.medications = request.form.get('medications', '')
+    insurance.medical_conditions = request.form.get('conditions', '')
+    
+    db.session.add(insurance)
+    db.session.commit()
+    
+    # 记录审计日志
+    log_action('update', 'insurance', insurance.id)
+    
+    return render_template('insurance_success.html')
+
 @app.route('/reason_for_visit')
+@require_auth_page
 def reason_for_visit():
+    """就诊原因选择"""
     return render_template('reason_for_visit.html')
 
-# 9. Voice input page
+@app.route('/submit_reason', methods=['POST'])
+@require_auth
+def submit_reason():
+    """提交就诊原因（从语音或文本输入）"""
+    reason = request.form.get('reason', '')
+    session['visit_reason'] = reason
+    return redirect(url_for('pain_assessment'))
+
 @app.route('/voice_input')
+@require_auth_page
 def voice_input():
+    """语音输入"""
     return render_template('voice_input.html')
 
-# Text input page
 @app.route('/text_input')
+@require_auth_page
 def text_input():
+    """文本输入"""
     return render_template('text_input.html')
 
-# Voice processing API
 @app.route('/api/process_audio', methods=['POST'])
+@require_auth
 def process_audio():
+    """处理语音文件 - AI分析"""
+    from services.ai_service import process_audio_file
+    from models import Patient, Visit
+    from security.audit import log_action
+    
     if 'audio' not in request.files:
         return jsonify({'error': 'No audio file provided'}), 400
     
@@ -118,221 +153,75 @@ def process_audio():
     if audio_file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    # Save audio file
+    # 保存音频文件
     filename = secure_filename(f"recording_{int(time.time())}.wav")
-    file_path = os.path.join(app.config['AUDIO_FOLDER'], filename)
+    file_path = os.path.join(AUDIO_FOLDER, filename)
     audio_file.save(file_path)
     
-    # Process audio file
     try:
-        # Convert audio to text
-        text = assembly(file_path)
+        # 使用AI服务处理音频
+        result = process_audio_file(file_path)
         
-        # Analyze symptoms
-        analysis = perplex(text)
+        # 获取当前患者
+        patient = Patient.query.filter_by(user_id=g.user_id).first()
         
-        # Get patient name (if available in session)
-        patient_name = session.get('name', '')
+        # 创建就诊记录
+        visit = Visit(
+            patient_id=patient.id,
+            visit_reason=result['text'],
+            voice_transcription=result['text'],
+            symptoms=result['analysis'].get('symptoms', []),
+            possible_causes=result['analysis'].get('possible causes', []),
+            audio_file_path=filename,
+            analysis_file_path=result['analysis_filename']
+        )
+        db.session.add(visit)
+        db.session.commit()
         
-        # Save analysis results to local file
-        analysis_filename = save_analysis_to_file(patient_name, text, analysis)
+        # 记录审计日志
+        log_action('create', 'visit', visit.id, {
+            'patient_id': patient.id,
+            'has_audio': True
+        })
         
-        # Save to session
-        session['voice_text'] = text
-        session['symptoms_analysis'] = analysis
-        session['visit_reason'] = text  # Use voice content as visit reason
-        session['analysis_filename'] = analysis_filename  # Save filename for future reference
-        
-        if isinstance(analysis, dict):
-            session['symptoms'] = ", ".join(analysis.get('symptoms', []))
+        # 保存到session（用于后续页面）
+        session['current_visit_id'] = visit.id
+        session['visit_reason'] = result['text']
+        session['symptoms'] = ", ".join(result['analysis'].get('symptoms', []))
         
         return jsonify({
-            'success': True, 
-            'text': text, 
-            'analysis': analysis,
-            'analysis_file': analysis_filename
+            'success': True,
+            'text': result['text'],
+            'analysis': result['analysis'],
+            'analysis_file': result['analysis_filename']
         })
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
-# Add route for accessing analysis files
-@app.route('/analysis_files/<filename>')
-def get_analysis_file(filename):
-    """
-    Access saved symptom analysis files
-    """
-    ANALYSIS_FOLDER = 'patient_analysis'
-    return send_from_directory(ANALYSIS_FOLDER, filename)
-
-# Updated confirmation route that passes analysis filename
-@app.route('/confirmation')
-def confirmation():
-    # Get analysis results
-    analysis = session.get('symptoms_analysis', {})
-    possible_causes = []
-    
-    if isinstance(analysis, dict):
-        possible_causes = analysis.get('possible causes', [])
-    
-    return render_template('confirmation.html', 
-                          name=session.get('name', ''),
-                          insurance_name=session.get('insurance_name', ''),
-                          insurance_id=session.get('insurance_id', ''),
-                          medications=session.get('medications', ''),
-                          conditions=session.get('conditions', ''),
-                          visit_reason=session.get('visit_reason', ''),
-                          symptoms=session.get('symptoms', ''),
-                          possible_causes=possible_causes,
-                          analysis_filename=session.get('analysis_filename', ''))
-
-# AssemblyAI turn audio into txt file
-def assembly(audio):
-    transcript = transcriber.transcribe(audio)
-    text = transcript.text
-    print(f"转录结果: {text}")
-    return text
-
-
-def perplex(text):
-    messages = [
-        {
-            "role" : "system",
-            "content":(
-                "You are an artificial intelligence assistant for hospital patients. "
-                "You need to analyze the patient's symptoms and provide possible causes. "
-                "The response MUST be a valid Python dictionary with exactly this format: "
-                "{'symptoms': ['symptom 1', 'symptom 2', ...], 'possible causes': ['cause 1', 'cause 2', ...]}. "
-                "Analyze the symptoms a patient is experiencing in detail (how severe the pain is and how long it has been). "
-                "Do not include any explanation or additional text - ONLY the Python dictionary."
-            ),
-        },
-        {
-            "role": "user",
-            "content": text
-        }
-    ]
-
-    client = OpenAI(api_key=PERPLEXITY_API_KEY, base_url="https://api.perplexity.ai")
-    response = client.chat.completions.create(
-        model="sonar-pro",
-        messages=messages,
-    )
-    summary = response.choices[0].message.content
-    print(f"API response: {summary}")
-    
-    try:
-        # Try to parse the response using a safer method
-        import json
-        # Try to find the beginning and end of the dictionary
-        start_idx = summary.find('{')
-        end_idx = summary.rfind('}') + 1
-        
-        if start_idx >= 0 and end_idx > start_idx:
-            dict_str = summary[start_idx:end_idx]
-            # Use json parsing instead of eval
-            result = json.loads(dict_str.replace("'", "\""))
-            
-            # Ensure the result contains necessary keys
-            if 'symptoms' not in result:
-                result['symptoms'] = []
-            if 'possible causes' not in result:
-                result['possible causes'] = []
-                
-            return result
-    except Exception as e:
-        print(f"Error parsing API response: {e}")
-    
-    # Return default structure if parsing fails
-    return {
-        'symptoms': ['Unable to extract clear symptoms from description'],
-        'possible causes': ['Please consult a doctor for accurate diagnosis']
-    }
-
-
-def save_analysis_to_file(patient_name, text, analysis):
-    """
-    Save voice transcription and symptom analysis to a local file
-    
-    Args:
-        patient_name: Patient name
-        text: Voice transcription text
-        analysis: Symptom analysis result
-    """
-    import os
-    import json
-    import datetime
-    
-    # Create directory for analysis storage
-    ANALYSIS_FOLDER = 'patient_analysis'
-    if not os.path.exists(ANALYSIS_FOLDER):
-        os.makedirs(ANALYSIS_FOLDER)
-    
-    # Get patient name from parameter and DOB from session if available
-    patient_dob = session.get('dob', '')
-    
-    # Generate filename with name-dob-date format
-    today_date = datetime.datetime.now().strftime("%Y%m%d")
-    
-    # Clean up the name and DOB for use in filename
-    safe_name = ''.join(c if c.isalnum() else '·' for c in patient_name) if patient_name else "unknown"
-    # Keep only alphabetic and numeric characters, directly remove all other characters
-    safe_dob = ''.join(c for c in patient_dob if c.isalnum()) if patient_dob else "nodob"
-
-    # Create filename: name-dob-date.txt
-    filename = f"{safe_name}-{safe_dob}-{today_date}.txt"
-    filepath = os.path.join(ANALYSIS_FOLDER, filename)
-    
-    # Format symptoms and possible causes
-    symptoms = []
-    causes = []
-    
-    if isinstance(analysis, dict):
-        symptoms = analysis.get('symptoms', [])
-        causes = analysis.get('possible causes', [])
-    
-    # Write to file
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(f"Patient Name: {patient_name}\n")
-        f.write(f"Patient DOB: {patient_dob}\n")
-        f.write(f"Record Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        f.write("=== Patient Description ===\n")
-        f.write(f"{text}\n\n")
-        f.write("=== Symptom Analysis ===\n")
-        
-        if symptoms:
-            f.write("Symptoms:\n")
-            for symptom in symptoms:
-                f.write(f"- {symptom}\n")
-        else:
-            f.write("No specific symptoms identified\n")
-        
-        f.write("\nPossible Causes:\n")
-        if causes:
-            for cause in causes:
-                f.write(f"- {cause}\n")
-        else:
-            f.write("No specific causes determined\n")
-    
-    print(f"Analysis result saved to: {filepath}")
-    return filename
-
-
-
-
-@app.route('/submit_reason', methods=['POST'])
-def submit_reason():
-    reason = request.form.get('reason', '')
-    session['visit_reason'] = reason
-    return redirect(url_for('pain_assessment'))
 
 @app.route('/pain_assessment')
+@require_auth_page
 def pain_assessment():
+    """疼痛评估"""
     return render_template('pain_assessment.html')
 
 @app.route('/submit_pain_assessment', methods=['POST'])
+@require_auth
 def submit_pain_assessment():
+    """提交疼痛评估"""
+    from models import Visit
+    
     pain_level = request.form.get('pain_level', '5')
     duration = request.form.get('duration', 'day')
+    
+    # 更新当前就诊记录
+    visit_id = session.get('current_visit_id')
+    if visit_id:
+        visit = Visit.query.get(visit_id)
+        if visit:
+            visit.pain_level = int(pain_level)
+            visit.pain_duration = duration
+            db.session.commit()
     
     session['pain_level'] = pain_level
     session['duration'] = duration
@@ -340,7 +229,9 @@ def submit_pain_assessment():
     return redirect(url_for('visit_confirmation'))
 
 @app.route('/visit_confirmation')
+@require_auth_page
 def visit_confirmation():
+    """就诊确认"""
     return render_template('visit_confirmation.html',
                           visit_reason=session.get('visit_reason', ''),
                           symptoms=session.get('symptoms', ''),
@@ -348,93 +239,58 @@ def visit_confirmation():
                           duration=session.get('duration', 'day'))
 
 @app.route('/submit_confirmation', methods=['POST'])
+@require_auth
 def submit_confirmation():
-    # Here you would typically save all the collected data to a database
+    """提交最终确认"""
+    from models import Visit
+    
+    # 更新就诊状态
+    visit_id = session.get('current_visit_id')
+    if visit_id:
+        visit = Visit.query.get(visit_id)
+        if visit:
+            visit.status = 'confirmed'
+            db.session.commit()
+    
     return redirect(url_for('appointment_confirmation'))
 
 @app.route('/appointment_confirmation')
+@require_auth_page
 def appointment_confirmation():
+    """预约确认"""
     return render_template('appointment_confirmation.html')
 
+# ==================== 文件访问路由 ====================
 
-
-@app.route('/submit_insurance', methods=['POST'])
-def submit_insurance():
-    if 'insurance_file' in request.files:
-        file = request.files['insurance_file']
-        if file.filename != '':
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            session['insurance_file'] = filename
-    else:
-        # Handle manual entry
-        session['insurance_name'] = request.form.get('insurance_name', '')
-        session['insurance_id'] = request.form.get('insurance_id', '')
-    
-    session['medications'] = request.form.get('medications', '')
-    session['conditions'] = request.form.get('conditions', '')
-    
-    return render_template('insurance_success.html')
-
-@app.route('/scan_insurance')
-def scan_insurance():
-    return render_template('scan_insurance.html')
-
-# Start recording
-@app.route('/api/start_recording', methods=['POST'])
-def start_recording():
-    # This API will be called from the frontend to initiate the recording feature
-    # Since we can't directly launch the recording interface on the server side, this functionality needs to be implemented via frontend JavaScript
-    # Here is only returns a success flag, indicating that the server is ready to receive the recording
-    return jsonify({'status': 'ready'})
-
-# Fetch recording
 @app.route('/recordings/<filename>')
 def get_recording(filename):
-    return send_from_directory(app.config['AUDIO_FOLDER'], filename)
+    """获取录音文件"""
+    return send_from_directory(AUDIO_FOLDER, filename)
 
-@app.route('/submit_info', methods=['POST'])
-def submit_info():
-    name = request.form.get('name')
-    dob = request.form.get('dob')
-    
-    if not name or not dob:
-        return "Name and date of birth is required", 400
-    
-    # Save name and dob in session 
-    session['name'] = name
-    session['dob'] = dob
-    
-    # Upload data
-    patient_info = load_patient_data()
-    
-    # Add patient if not exist
-    if name not in patient_info:
-        patient_info[name] = {}
-        
-    if dob not in patient_info[name]:
-        patient_info[name][dob] = []
-    
-    # Save data 
-    save_patient_data(patient_info)
-    return render_template('welcome_confirmation.html', name=name)
+@app.route('/analysis_files/<filename>')
+def get_analysis_file(filename):
+    """获取分析文件"""
+    return send_from_directory(ANALYSIS_FOLDER, filename)
 
+# ==================== 错误处理 ====================
 
-# # Check patient 
-# @app.route('/api/check_patient', methods=['POST'])
-# def check_patient():
-#     data = request.json
-#     name = data.get('name')
-#     dob = data.get('dob')
-    
-#     patient_info = load_patient_data()
-    
-#     if name in patient_info and dob in patient_info[name]:
-#         return jsonify({"exists": True})
-#     else:
-#         return jsonify({"exists": False})
+@app.errorhandler(401)
+def unauthorized(e):
+    return jsonify({'error': 'Unauthorized'}), 401
 
-# if __name__ == '__main__':
-#     app.run(host='127.0.0.1', debug=True)
+@app.errorhandler(403)
+def forbidden(e):
+    return jsonify({'error': 'Forbidden'}), 403
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'error': 'Not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({'error': 'Internal server error'}), 500
+
+# ==================== 运行应用 ====================
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

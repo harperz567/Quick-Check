@@ -1,15 +1,28 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="insurance-options">
+<!-- ✅ 在页面开头加认证检查 -->
+<script src="{{ url_for('static', filename='js/auth_check.js') }}"></script>
+
+<!-- 原来的内容 -->
+<div class="insurance-screen">
     <h1>Insurance Information</h1>
     
     <div class="options-container">
-        <a href="{{ url_for('scan_insurance') }}" class="btn primary-btn">Scan Insurance</a>
+        <div class="option-card" onclick="window.location.href='/manual_insurance'">
+            <h2>Manual Entry</h2>
+            <p>Enter your insurance information manually</p>
+        </div>
         
-        <div class="or-divider">OR</div>
-        
-        <a href="{{ url_for('manual_insurance') }}" class="btn primary-btn">Enter Manually</a>
+        <div class="option-card" onclick="window.location.href='/scan_insurance'">
+            <h2>Scan Card</h2>
+            <p>Take a photo of your insurance card</p>
+        </div>
+    </div>
+    
+    <div class="navigation-buttons">
+        <button onclick="window.location.href='/patient/welcome'" class="btn-back">Back</button>
+        <button onclick="window.location.href='/reason_for_visit'" class="btn-next">Skip</button>
     </div>
 </div>
 {% endblock %}

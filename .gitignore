@@ -1,0 +1,32 @@
+# Environment
+.env
+venv/
+env/
+ENV/
+
+# Database
+*.db
+*.sqlite
+migrations/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Uploads
+uploads/
+recordings/
+patient_analysis/
+*.txt
+!requirements.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

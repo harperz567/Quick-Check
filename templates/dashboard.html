@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Staff Dashboard</h1>
+        <div class="user-info">
+            <span id="staffName"></span>
+            <button onclick="logout()" class="btn-logout">Logout</button>
+        </div>
+    </div>
+    
+    <div class="dashboard-content">
+        <!-- 患者列表 -->
+        <div class="section">
+            <h2>All Patients</h2>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search by name...">
+            </div>
+            <table class="patients-table">
+                <thead>
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Date of Birth</th>
+                        <th>Last Visit</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="patientsTableBody">
+                    <!-- 动态加载 -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- 最近就诊记录 -->
+        <div class="section">
+            <h2>Recent Visits</h2>
+            <div id="recentVisits">
+                <!-- 动态加载 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 患者详情Modal -->
+<div id="patientModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Patient Details</h2>
+        <div id="patientDetails"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 检查是否有token和权限
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+if (!token || user.role !== 'staff') {
+    window.location.href = '/login';
+}
+
+// 显示staff名字
+document.getElementById('staffName').textContent = user.username;
+
+// 加载所有患者
+async function loadPatients() {
+    try {
+        const response = await fetch('/api/patient/all', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                window.location.href = '/login';
+                return;
+            }
+            throw new Error('Failed to load patients');
+        }
+        
+        const data = await response.json();
+        displayPatients(data.patients);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to load patients');
+    }
+}
+
+function displayPatients(patients) {
+    const tbody = document.getElementById('patientsTableBody');
+    tbody.innerHTML = '';
+    
+    patients.forEach(patient => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${patient.id}</td>
+            <td>${patient.full_name}</td>
+            <td>${patient.date_of_birth}</td>
+            <td>${patient.last_visit || 'N/A'}</td>
+            <td>
+                <button onclick="viewPatient(${patient.id})" class="btn-view">View</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// 加载最近就诊记录
+async function loadRecentVisits() {
+    try {
+        const response = await fetch('/api/visit/recent', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        displayRecentVisits(data.visits);
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+function displayRecentVisits(visits) {
+    const container = document.getElementById('recentVisits');
+    container.innerHTML = '';
+    
+    if (visits.length === 0) {
+        container.innerHTML = '<p>No recent visits</p>';
+        return;
+    }
+    
+    visits.forEach(visit => {
+        const card = document.createElement('div');
+        card.className = 'visit-card';
+        card.innerHTML = `
+            <h3>${visit.patient_name}</h3>
+            <p><strong>Date:</strong> ${new Date(visit.visit_date).toLocaleString()}</p>
+            <p><strong>Reason:</strong> ${visit.visit_reason}</p>
+            <p><strong>Status:</strong> ${visit.status}</p>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// 查看患者详情
+async function viewPatient(patientId) {
+    try {
+        const response = await fetch(`/api/patient/${patientId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        showPatientModal(data);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to load patient details');
+    }
+}
+
+function showPatientModal(patient) {
+    const modal = document.getElementById('patientModal');
+    const details = document.getElementById('patientDetails');
+    
+    details.innerHTML = `
+        <div class="patient-info">
+            <p><strong>Name:</strong> ${patient.full_name}</p>
+            <p><strong>Date of Birth:</strong> ${patient.date_of_birth}</p>
+            <p><strong>Phone:</strong> ${patient.phone || 'N/A'}</p>
+            <p><strong>Email:</strong> ${patient.email}</p>
+        </div>
+        
+        <h3>Visit History</h3>
+        <div class="visit-history">
+            ${patient.visits.map(visit => `
+                <div class="visit-item">
+                    <p><strong>${new Date(visit.visit_date).toLocaleDateString()}</strong></p>
+                    <p>${visit.visit_reason}</p>
+                    <p>Symptoms: ${visit.symptoms ? visit.symptoms.join(', ') : 'N/A'}</p>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+// Modal关闭
+document.querySelector('.close').onclick = function() {
+    document.getElementById('patientModal').style.display = 'none';
+}
+
+// 搜索功能
+document.getElementById('searchInput').addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#patientsTableBody tr');
+    
+    rows.forEach(row => {
+        const name = row.cells[1].textContent.toLowerCase();
+        row.style.display = name.includes(searchTerm) ? '' : 'none';
+    });
+});
+
+// 登出
+function logout() {
+    fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    }).then(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+    });
+}
+
+// 页面加载时获取数据
+loadPatients();
+loadRecentVisits();
+</script>
+{% endblock %}

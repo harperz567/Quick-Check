@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="welcome-container">
+    <div class="welcome-header">
+        <h1>Welcome, <span id="patientName"></span>!</h1>
+        <button onclick="logout()" class="btn-logout">Logout</button>
+    </div>
+    
+    <div class="welcome-content">
+        <div class="info-card">
+            <h2>Your Information</h2>
+            <div id="patientInfo"></div>
+        </div>
+        
+        <div class="action-card">
+            <h2>What would you like to do today?</h2>
+            <div class="action-buttons">
+                <button onclick="startRegistration()" class="btn-primary">
+                    New Visit Registration
+                </button>
+                <button onclick="viewHistory()" class="btn-secondary">
+                    View Visit History
+                </button>
+            </div>
+        </div>
+        
+        <div class="recent-visits">
+            <h2>Recent Visits</h2>
+            <div id="recentVisits"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+if (!token || user.role !== 'patient') {
+    window.location.href = '/login';
+}
+
+// 加载患者信息
+async function loadPatientInfo() {
+    try {
+        const response = await fetch('/api/patient/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const data = await response.json();
+        
+        document.getElementById('patientName').textContent = data.full_name;
+        
+        document.getElementById('patientInfo').innerHTML = `
+            <p><strong>Name:</strong> ${data.full_name}</p>
+            <p><strong>Date of Birth:</strong> ${data.date_of_birth}</p>
+            <p><strong>Phone:</strong> ${data.phone || 'N/A'}</p>
+        `;
+        
+        // 显示最近就诊
+        if (data.recent_visits && data.recent_visits.length > 0) {
+            const visitsHTML = data.recent_visits.map(visit => `
+                <div class="visit-item">
+                    <p><strong>${new Date(visit.visit_date).toLocaleDateString()}</strong></p>
+                    <p>${visit.visit_reason}</p>
+                    <p>Status: ${visit.status}</p>
+                </div>
+            `).join('');
+            document.getElementById('recentVisits').innerHTML = visitsHTML;
+        } else {
+            document.getElementById('recentVisits').innerHTML = '<p>No recent visits</p>';
+        }
+    } catch (error) {
+        console.error('Error loading patient info:', error);
+    }
+}
+
+function startRegistration() {
+    window.location.href = '/insurance_options';
+}
+
+function viewHistory() {
+    // 这里可以跳转到历史记录页面
+    alert('View history feature coming soon!');
+}
+
+function logout() {
+    fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    }).then(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+    });
+}
+
+// 页面加载时获取数据
+loadPatientInfo();
+</script>
+{% endblock %}

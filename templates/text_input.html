@@ -1,15 +1,50 @@
 {% extends "base.html" %}
 
 {% block content %}
+<script src="{{ url_for('static', filename='js/auth_check.js') }}"></script>
+
 <div class="text-input">
-    <h1>Enter the reason for your visit</h1>
+    <h1>Please describe your symptoms</h1>
     
-    <form action="{{ url_for('submit_reason') }}" method="post">
-        <div class="form-group">
-            <textarea id="reason" name="reason" rows="5" placeholder="Please describe why you're visiting today..."></textarea>
-        </div>
-        
+    <form id="textForm">
+        <textarea name="reason" id="reasonText" placeholder="Describe your symptoms..." required></textarea>
         <button type="submit" class="btn primary-btn">Continue</button>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('textForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const token = localStorage.getItem('token');
+    const formData = new FormData(e.target);
+    
+    try {
+        const response = await fetch('/submit_reason', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            },
+            body: formData
+        });
+        
+        if (response.status === 401) {
+            alert('Session expired. Please login again.');
+            window.location.href = '/login';
+            return;
+        }
+        
+        if (response.ok) {
+            window.location.href = '/pain_assessment';
+        } else {
+            alert('Failed to submit');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Network error');
+    }
+});
+</script>
 {% endblock %}

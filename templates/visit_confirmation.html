@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<script src="{{ url_for('static', filename='js/auth_check.js') }}"></script>
 <div class="visit-confirmation">
     <h1>Confirm this information</h1>
     
@@ -38,9 +39,46 @@
             </svg>
             Back to previous
         </a>
-        <form action="{{ url_for('submit_confirmation') }}" method="post">
+        <!-- ✅ 改成id，用JavaScript提交 -->
+        <form id="confirmForm">
             <button type="submit" class="btn primary-btn">Confirm</button>
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ✅ 添加表单提交
+document.getElementById('confirmForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const token = localStorage.getItem('token');
+    
+    try {
+        const response = await fetch('/submit_confirmation', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.status === 401) {
+            alert('Session expired. Please login again.');
+            window.location.href = '/login';
+            return;
+        }
+        
+        if (response.ok) {
+            window.location.href = '/appointment_confirmation';
+        } else {
+            alert('Failed to confirm appointment');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Network error');
+    }
+});
+</script>
 {% endblock %}

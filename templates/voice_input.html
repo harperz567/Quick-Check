@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
+<script src="{{ url_for('static', filename='js/auth_check.js') }}"></script>
+
 <div class="voice-input">
     <h1>Tell us the reason for your visit</h1>
     
@@ -141,17 +143,30 @@
         // Show loading status
         recordingStatus.textContent = 'Analyzing your symptoms...\nPlease wait';
         
+        // ✅ 获取token
+        const token = localStorage.getItem('token');
+        
         // Send to server
         fetch('/api/process_audio', {
             method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            },
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (response.status === 401) {
+                alert('Session expired. Please login again.');
+                window.location.href = '/login';
+                return;
+            }
+            return response.json();
+        })
         .then(data => {
-            if (data.success) {
+            if (data && data.success) {
                 displayResults(data);
             } else {
-                throw new Error(data.error || 'Error processing audio');
+                throw new Error(data?.error || 'Error processing audio');
             }
         })
         .catch(error => {

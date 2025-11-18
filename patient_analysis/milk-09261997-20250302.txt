@@ -1,20 +1,21 @@
 Patient Name: milk
 Patient DOB: 09/26/1997
-Record Time: 2025-03-02 08:11:44
+Record Time: 2025-03-02 11:02:36
 
 === Patient Description ===
-Hi. I have a headache recently and it's been three or four days. It's getting even more and more severe. And when I lie down, it is even more painful. I don't know what's wrong. So now.
+I have had it for three days and it's very painful. And when I lie down, it's more painful.
 
 === Symptom Analysis ===
 Symptoms:
-- Headache for 3-4 days
-- Increasing severity
+- Lower back pain
 - Pain worsens when lying down
+- Pain persisting for 3 days
+- Severe pain
 
 Possible Causes:
-- Tension headache
-- Migraine
-- Cervicogenic headache
-- Nasal congestion
-- Increased intracranial pressure
-- Sinus infection
+- Muscle strain or sprain
+- Herniated disc
+- Sciatica
+- Degenerative disc disease
+- Spinal stenosis
+- Ankylosing spondylitis

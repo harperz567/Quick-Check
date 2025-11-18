@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<script src="{{ url_for('static', filename='js/auth_check.js') }}"></script>
 <div class="pain-assessment">
     <h1>From 1 to 10, how severe is your pain?</h1>
     
@@ -45,7 +46,8 @@
         </select>
     </div>
     
-    <form action="{{ url_for('submit_pain_assessment') }}" method="post" class="pain-form">
+    <!-- ✅ 改成id，用JavaScript提交 -->
+    <form id="painForm" class="pain-form">
         <input type="hidden" id="painLevelInput" name="pain_level" value="6">
         <input type="hidden" id="durationInput" name="duration" value="day">
         <button type="submit" class="btn primary-btn next-btn">Next</button>
@@ -66,6 +68,39 @@
     
     durationDropdown.addEventListener('change', function() {
         durationInput.value = this.value;
+    });
+    
+    // ✅ 添加表单提交
+    document.getElementById('painForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const token = localStorage.getItem('token');
+        const formData = new FormData(e.target);
+        
+        try {
+            const response = await fetch('/submit_pain_assessment', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                },
+                body: formData
+            });
+            
+            if (response.status === 401) {
+                alert('Session expired. Please login again.');
+                window.location.href = '/login';
+                return;
+            }
+            
+            if (response.ok) {
+                window.location.href = '/visit_confirmation';
+            } else {
+                alert('Failed to submit pain assessment');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Network error');
+        }
     });
 </script>
 {% endblock %}
